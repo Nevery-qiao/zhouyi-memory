@@ -1,14 +1,15 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { updateCardState, createInitialCardState, addDays, isDue } from './sm2';
 import type { CardState } from '../models/types';
 
-// Mock getToday to return a fixed date for deterministic tests
-vi.mock('./sm2', async () => {
-  const actual = await vi.importActual('./sm2');
-  return {
-    ...actual,
-    getToday: () => '2026-02-18',
-  };
+// Freeze time so getToday() always returns '2026-02-18'
+beforeEach(() => {
+  vi.useFakeTimers();
+  vi.setSystemTime(new Date('2026-02-18T12:00:00'));
+});
+
+afterEach(() => {
+  vi.useRealTimers();
 });
 
 function makeState(overrides: Partial<CardState> = {}): CardState {

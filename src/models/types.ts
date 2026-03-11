@@ -5,6 +5,7 @@ export interface Hexagram {
   symbol: string;          // 六爻卦象 Unicode，如「䷀」
   trigram: string;         // 八卦卦象（仅八经卦有），如「☰」
   judgment: string;        // 卦辞
+  judgmentTranslation: string; // 卦辞白话翻译
   upperTrigram: string;    // 上卦名称，如「乾」
   lowerTrigram: string;    // 下卦名称，如「乾」
   upperTrigramSymbol: string; // 上卦卦象，如「☰」
@@ -41,31 +42,27 @@ export interface StudyRecord {
   lastStudyDate: string;                   // 上次学习日期 (YYYY-MM-DD)
 }
 
-/** 学习模式 */
-export type StudyMode = 'flip' | 'quiz';
+/** 练习题型 */
+export type ExerciseType = 'teaching' | 'quiz-forward' | 'true-false' | 'quiz-reverse';
 
-/** 翻卡自评质量分 */
-export type FlipQuality = 1 | 3 | 5;
-
-/** 四选一自动评分 */
-export type QuizQuality = 1 | 4;
-
-/** 所有可能的 quality 值 */
-export type Quality = FlipQuality | QuizQuality;
+/** 客观评分质量分：答对=4，答错=1 */
+export type Quality = 1 | 4;
 
 /** 学习队列中的卡片项 */
 export interface QueueItem {
   card: Card;
+  exerciseType: ExerciseType;
   isNew: boolean;          // 是否为新卡
   isRequeue: boolean;      // 是否为答错后重排的卡片（不更新 SM-2）
+  isConsolidation: boolean; // 是否为延迟巩固卡片（不更新 SM-2）
 }
 
 /** 本次 session 学习统计 */
 export interface SessionStats {
   reviewedCount: number;   // 复习卡片数
   newCount: number;        // 新学卡片数
-  correctCount: number;    // 答对次数（四选一模式）
-  totalAnswered: number;   // 总答题次数（四选一模式）
+  correctCount: number;    // 答对次数
+  totalAnswered: number;   // 总答题次数
 }
 
 /** 四选一选项 */
@@ -80,4 +77,15 @@ export interface ProgressInfo {
   totalCards: number;      // 总卡片数 (192)
   dueCount: number;        // 今日待复习数
   newLearnedCount: number; // 本次 session 已学新卡数
+}
+
+/** 卦典掌握度 */
+export type MasteryLevel = 'unlearned' | 'learning' | 'mastered';
+
+/** 判断对错题数据 */
+export interface TrueFalseQuestion {
+  front: string;          // 题面，如卦象符号
+  claim: string;          // 声称的答案（可能正确也可能错误）
+  isCorrect: boolean;     // 配对是否正确
+  dimension: string;      // 维度标签，如「此为何卦？」
 }

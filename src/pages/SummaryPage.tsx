@@ -84,9 +84,9 @@ export default function SummaryPage({ stats, progress, nextDueInfo, isAllDone, o
                   <div className="text-xs text-ink-muted mt-1">新学卡片</div>
                 </div>
               </div>
-              {hasQuizStats && (
+              {stats.totalAnswered > 0 && (
                 <div className="border-t border-card-border mt-4 pt-4">
-                  <div className="text-xs text-ink-muted mb-1">四选一正确率</div>
+                  <div className="text-xs text-ink-muted mb-1">正确率</div>
                   <div className="text-lg font-bold text-jade">{accuracy}%</div>
                 </div>
               )}

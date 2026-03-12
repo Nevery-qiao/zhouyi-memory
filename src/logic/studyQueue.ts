@@ -1,11 +1,9 @@
-import type { Card, QueueItem } from '../models/types';
+import type { Card, QueueItem, MasteryLevel } from '../models/types';
 import { getAllCards } from './cardGenerator';
-import { loadStudyRecord } from '../storage/localStorage';
+import { loadStudyRecord, getCardState } from '../storage/localStorage';
 import { getToday, isDue, hasBeenStudied } from '../algorithm/sm2';
+import { assignExerciseType } from './exerciseAssigner';
 
-/**
- * Fisher-Yates shuffle（原地打乱数组）
- */
 function shuffle<T>(arr: T[]): T[] {
   const a = [...arr];
   for (let i = a.length - 1; i > 0; i--) {
@@ -15,42 +13,90 @@ function shuffle<T>(arr: T[]): T[] {
   return a;
 }
 
+const MASTERY_THRESHOLD = 4;
+
 /**
- * 构建学习 session 队列
+ * Build study session queue with exercise types pre-assigned.
  *
- * 1. 到期复习卡（按 dueDate 排序后 shuffle）
- * 2. 新卡片（按卦序排列）
+ * Phase 1: Due review cards (shuffled, exercise type by mastery)
+ * Phase 2: New cards (teaching → quiz-forward, interleaved by hexagram)
  */
 export function buildStudyQueue(): QueueItem[] {
   const allCards = getAllCards();
   const record = loadStudyRecord();
 
+  // --- Phase 1: Due review cards ---
   const dueItems: QueueItem[] = [];
+  for (const card of allCards) {
+    const state = record.cardStates[card.id];
+    if (state && hasBeenStudied(state) && isDue(state)) {
+      dueItems.push({
+        card,
+        exerciseType: assignExerciseType(state),
+        isNew: false,
+        isRequeue: false,
+        isConsolidation: false,
+      });
+    }
+  }
+  const shuffledDue = shuffle(dueItems);
+
+  // --- Phase 2: New cards with teaching flow ---
   const newItems: QueueItem[] = [];
+  const taughtHexagrams = new Set<number>();
 
   for (const card of allCards) {
     const state = record.cardStates[card.id];
-
     if (!state || !hasBeenStudied(state)) {
-      // 未学过的新卡
-      newItems.push({ card, isNew: true, isRequeue: false });
-    } else if (isDue(state)) {
-      // 已学过且到期
-      dueItems.push({ card, isNew: false, isRequeue: false });
+      // Insert teaching card for this hexagram (once per hexagram)
+      if (!taughtHexagrams.has(card.hexagramId)) {
+        taughtHexagrams.add(card.hexagramId);
+        newItems.push({
+          card,
+          exerciseType: 'teaching',
+          isNew: true,
+          isRequeue: false,
+          isConsolidation: false,
+        });
+      }
+      // Immediate test (forward quiz)
+      newItems.push({
+        card,
+        exerciseType: 'quiz-forward',
+        isNew: true,
+        isRequeue: false,
+        isConsolidation: false,
+      });
     }
-    // 已学过但未到期 → 不出现在队列中
   }
 
-  // 到期卡 shuffle，避免同一卦的 A/C/G 卡连续出现
-  const shuffledDue = shuffle(dueItems);
-
-  // 新卡按卦序（由 generateAllCards 保证）
   return [...shuffledDue, ...newItems];
 }
 
 /**
- * 将答错卡片插入队列尾部（3-5 张后重新出现）
- * 返回新队列
+ * Insert a consolidation card (reverse quiz) 3-5 items after currentIndex.
+ * Called when a new card's immediate test is answered correctly.
+ */
+export function insertConsolidation(
+  queue: QueueItem[],
+  currentIndex: number,
+  card: Card,
+): QueueItem[] {
+  const newQueue = [...queue];
+  const offset = 3 + Math.floor(Math.random() * 3);
+  const insertAt = Math.min(currentIndex + offset, newQueue.length);
+  newQueue.splice(insertAt, 0, {
+    card,
+    exerciseType: 'quiz-reverse',
+    isNew: false,
+    isRequeue: false,
+    isConsolidation: true,
+  });
+  return newQueue;
+}
+
+/**
+ * Requeue a failed card (forward quiz) 3-5 items after currentIndex.
  */
 export function requeueFailedCard(
   queue: QueueItem[],
@@ -58,19 +104,32 @@ export function requeueFailedCard(
   card: Card,
 ): QueueItem[] {
   const newQueue = [...queue];
-  // 插入位置：当前位置 + 3~5 张后
-  const offset = 3 + Math.floor(Math.random() * 3); // 3, 4, or 5
+  const offset = 3 + Math.floor(Math.random() * 3);
   const insertAt = Math.min(currentIndex + offset, newQueue.length);
   newQueue.splice(insertAt, 0, {
     card,
+    exerciseType: 'quiz-forward',
     isNew: false,
-    isRequeue: true, // 标记为重排卡，不更新 SM-2
+    isRequeue: true,
+    isConsolidation: false,
   });
   return newQueue;
 }
 
 /**
- * 计算全局进度信息
+ * Hexagram-level mastery for the dictionary page.
+ */
+export function getHexagramMastery(hexId: number): MasteryLevel {
+  const states = (['A', 'C', 'G'] as const).map(t => getCardState(`${hexId}-${t}`));
+  const hasAnyStudied = states.some(s => s && s.lastReviewDate !== '');
+  if (!hasAnyStudied) return 'unlearned';
+  const allMastered = states.every(s => s && s.repetitions >= MASTERY_THRESHOLD);
+  if (allMastered) return 'mastered';
+  return 'learning';
+}
+
+/**
+ * Calculate global progress info.
  */
 export function getProgressInfo(newLearnedCount: number) {
   const allCards = getAllCards();
@@ -83,32 +142,22 @@ export function getProgressInfo(newLearnedCount: number) {
   for (const card of allCards) {
     const state = record.cardStates[card.id];
     if (state && hasBeenStudied(state)) {
-      if (state.repetitions >= 1) {
-        masteredCount++;
-      }
-      if (state.dueDate <= today) {
-        dueCount++;
-      }
+      if (state.repetitions >= 1) masteredCount++;
+      if (state.dueDate <= today) dueCount++;
     }
   }
 
-  return {
-    masteredCount,
-    totalCards: allCards.length,
-    dueCount,
-    newLearnedCount,
-  };
+  return { masteredCount, totalCards: allCards.length, dueCount, newLearnedCount };
 }
 
 /**
- * 获取最近到期的复习日期和数量（用于完成页展示）
+ * Get next due review date and count (for summary page).
  */
 export function getNextDueInfo(): { date: string; count: number } | null {
   const allCards = getAllCards();
   const record = loadStudyRecord();
   const today = getToday();
 
-  // 找出所有未来到期卡片（dueDate > today）
   const futureDates: string[] = [];
   for (const card of allCards) {
     const state = record.cardStates[card.id];
@@ -118,11 +167,8 @@ export function getNextDueInfo(): { date: string; count: number } | null {
   }
 
   if (futureDates.length === 0) return null;
-
-  // 找最近的日期
   futureDates.sort();
   const nextDate = futureDates[0];
   const count = futureDates.filter(d => d === nextDate).length;
-
   return { date: nextDate, count };
 }

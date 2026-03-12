@@ -1,24 +1,29 @@
 import { useState, useEffect } from 'react';
-import type { Card, QuizOption, QuizQuality } from '../models/types';
+import type { Card, Quality, QuizOption } from '../models/types';
+import { generateQuizOptions, generateReverseQuizOptions } from '../logic/distractorPicker';
 
 interface QuizCardProps {
   card: Card;
-  options: QuizOption[];
-  onAnswer: (quality: QuizQuality) => void;
+  reverse?: boolean;
+  onAnswer: (quality: Quality) => void;
 }
 
-export default function QuizCard({ card, options, onAnswer }: QuizCardProps) {
+export default function QuizCard({ card, reverse = false, onAnswer }: QuizCardProps) {
+  const [options, setOptions] = useState<QuizOption[]>([]);
   const [selected, setSelected] = useState<number | null>(null);
   const [fadeKey, setFadeKey] = useState(0);
 
-  const answered = selected !== null;
-  const isCorrect = selected !== null && options[selected]?.isCorrect;
-
-  // 新卡片时重置状态
   useEffect(() => {
+    const opts = reverse
+      ? generateReverseQuizOptions(card)
+      : generateQuizOptions(card);
+    setOptions(opts);
     setSelected(null);
     setFadeKey(prev => prev + 1);
-  }, [card.id]);
+  }, [card.id, reverse]);
+
+  const answered = selected !== null;
+  const isCorrect = selected !== null && options[selected]?.isCorrect;
 
   const handleSelect = (index: number) => {
     if (answered) return;
@@ -29,19 +34,22 @@ export default function QuizCard({ card, options, onAnswer }: QuizCardProps) {
     onAnswer(isCorrect ? 4 : 1);
   };
 
-  const isSymbol = card.type === 'A' || card.type === 'G';
+  const promptText = reverse ? card.back : card.front;
+  const isSymbolPrompt = reverse
+    ? false
+    : (card.type === 'A' || card.type === 'G');
+
+  const dimensionLabel = reverse
+    ? { A: '哪个是它的卦象？', C: '这是哪一卦的卦辞？', G: '哪个是它的卦象？' }[card.type]
+    : { A: '此为何卦？', C: '卦辞为何？', G: '上下卦为何？' }[card.type];
 
   return (
     <div key={fadeKey} className="card-fade-enter flex flex-col items-center">
       {/* 题面 */}
       <div className="w-full bg-card-bg border border-card-border rounded-xl p-8 min-h-[160px] flex flex-col items-center justify-center mb-6">
-        <div className="text-xs text-ink-muted mb-3">
-          {card.type === 'A' && '此为何卦？'}
-          {card.type === 'C' && '卦辞为何？'}
-          {card.type === 'G' && '上下卦为何？'}
-        </div>
-        <div className={`${isSymbol ? 'hexagram-symbol text-7xl' : 'text-4xl font-bold'} text-ink`}>
-          {card.front}
+        <div className="text-xs text-ink-muted mb-3">{dimensionLabel}</div>
+        <div className={`${isSymbolPrompt ? 'hexagram-symbol text-7xl' : 'text-4xl font-bold'} text-ink`}>
+          {promptText}
         </div>
       </div>
 
@@ -60,6 +68,10 @@ export default function QuizCard({ card, options, onAnswer }: QuizCardProps) {
             }
           }
 
+          const isSymbolOption = reverse
+            ? (card.type === 'A' || card.type === 'G')
+            : false;
+
           return (
             <button
               key={index}
@@ -69,7 +81,7 @@ export default function QuizCard({ card, options, onAnswer }: QuizCardProps) {
                 !answered ? 'active:scale-[0.98] cursor-pointer' : 'cursor-default'
               }`}
             >
-              <span className={`${card.type === 'C' ? 'line-clamp-2' : ''}`}>
+              <span className={`${isSymbolOption ? 'hexagram-symbol text-xl' : ''} ${card.type === 'C' && !reverse ? 'line-clamp-2' : ''}`}>
                 {option.text}
               </span>
             </button>

@@ -1,9 +1,11 @@
 import { useState, useCallback, useMemo } from 'react';
-import type { QueueItem, Quality, SessionStats, StudyMode, ProgressInfo } from '../models/types';
+import type { QueueItem, Quality, SessionStats, ProgressInfo } from '../models/types';
 import { updateCardState, createInitialCardState } from '../algorithm/sm2';
 import { saveCardState, getCardState } from '../storage/localStorage';
-import { buildStudyQueue, requeueFailedCard, getProgressInfo, getNextDueInfo } from '../logic/studyQueue';
-import { generateQuizOptions } from '../logic/distractorPicker';
+import {
+  buildStudyQueue, requeueFailedCard, insertConsolidation,
+  getProgressInfo, getNextDueInfo,
+} from '../logic/studyQueue';
 
 const NEW_CARD_SOFT_LIMIT = 5;
 
@@ -12,17 +14,12 @@ export type SessionPhase = 'idle' | 'studying' | 'newCardPrompt' | 'summary' | '
 export function useStudySession() {
   const [queue, setQueue] = useState<QueueItem[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [mode, setMode] = useState<StudyMode>('flip');
   const [phase, setPhase] = useState<SessionPhase>('idle');
   const [stats, setStats] = useState<SessionStats>({
-    reviewedCount: 0,
-    newCount: 0,
-    correctCount: 0,
-    totalAnswered: 0,
+    reviewedCount: 0, newCount: 0, correctCount: 0, totalAnswered: 0,
   });
   const [newCardCount, setNewCardCount] = useState(0);
 
-  /** 开始新的学习 session */
   const startSession = useCallback(() => {
     const q = buildStudyQueue();
     setQueue(q);
@@ -32,66 +29,72 @@ export function useStudySession() {
     setPhase(q.length > 0 ? 'studying' : 'allDone');
   }, []);
 
-  /** 当前卡片 */
   const currentItem = useMemo(() => {
     if (currentIndex < queue.length) return queue[currentIndex];
     return null;
   }, [queue, currentIndex]);
 
-  /** 当前卡片的四选一选项 */
-  const quizOptions = useMemo(() => {
-    if (!currentItem) return [];
-    return generateQuizOptions(currentItem.card);
-  }, [currentItem]);
-
-  /** 获取进度信息 */
   const progress = useMemo((): ProgressInfo => {
     return getProgressInfo(stats.newCount);
   }, [stats.newCount]);
 
-  /** 回答当前卡片 */
+  /** Advance past teaching card — no scoring, just move forward */
+  const advanceTeaching = useCallback(() => {
+    const nextIndex = currentIndex + 1;
+    if (nextIndex >= queue.length) {
+      setPhase('summary');
+    } else {
+      setCurrentIndex(nextIndex);
+    }
+  }, [queue, currentIndex]);
+
+  /** Answer a scored exercise (quiz-forward, true-false, quiz-reverse) */
   const answerCard = useCallback((quality: Quality) => {
     const item = queue[currentIndex];
     if (!item) return;
 
-    // 更新统计
+    const isCorrect = quality >= 3;
+    const shouldUpdateSM2 = !item.isRequeue && !item.isConsolidation;
+
+    // Update stats
     setStats(prev => {
-      const next = { ...prev };
-      if (item.isNew) next.newCount++;
-      else if (!item.isRequeue) next.reviewedCount++;
-      if (mode === 'quiz') {
-        next.totalAnswered++;
-        if (quality >= 3) next.correctCount++;
-      }
+      const next = { ...prev, totalAnswered: prev.totalAnswered + 1 };
+      if (isCorrect) next.correctCount++;
+      if (item.isNew && !item.isRequeue) next.newCount++;
+      else if (!item.isNew && !item.isRequeue && !item.isConsolidation) next.reviewedCount++;
       return next;
     });
 
-    // 更新 SM-2 状态并保存（仅非重排卡）
-    if (!item.isRequeue) {
+    // Update SM-2 (only for non-requeue, non-consolidation)
+    if (shouldUpdateSM2) {
       const existing = getCardState(item.card.id);
       const state = existing || createInitialCardState(item.card.id);
       const updated = updateCardState(state, quality);
       saveCardState(updated);
     }
 
-    // 答错 → 重排到队列尾部
-    if (quality < 3 && !item.isRequeue) {
+    // Answer wrong → requeue
+    if (!isCorrect && !item.isRequeue && !item.isConsolidation) {
       setQueue(prev => requeueFailedCard(prev, currentIndex, item.card));
     }
 
-    // 跟踪新卡数量
+    // New card answered correctly → insert consolidation
+    if (isCorrect && item.isNew && !item.isRequeue) {
+      setQueue(prev => insertConsolidation(prev, currentIndex, item.card));
+    }
+
+    // Track new card count for soft limit
     let nextNewCardCount = newCardCount;
-    if (item.isNew) {
+    if (item.isNew && !item.isRequeue) {
       nextNewCardCount = newCardCount + 1;
       setNewCardCount(nextNewCardCount);
     }
 
-    // 前进到下一张
+    // Advance
     const nextIndex = currentIndex + 1;
 
-    // 检查是否到达新卡软限制
+    // Check new card soft limit
     if (nextNewCardCount > 0 && nextNewCardCount % NEW_CARD_SOFT_LIMIT === 0 && item.isNew) {
-      // 检查下一张是否也是新卡（如果是，弹出提示）
       const nextItem = queue[nextIndex];
       if (nextItem && nextItem.isNew) {
         setCurrentIndex(nextIndex);
@@ -100,50 +103,25 @@ export function useStudySession() {
       }
     }
 
-    // 检查是否完成
     if (nextIndex >= queue.length) {
       setPhase('summary');
     } else {
       setCurrentIndex(nextIndex);
     }
-  }, [queue, currentIndex, mode, newCardCount]);
+  }, [queue, currentIndex, newCardCount]);
 
-  /** 新卡提示后继续学习 */
-  const continueAfterPrompt = useCallback(() => {
-    setPhase('studying');
-  }, []);
+  const continueAfterPrompt = useCallback(() => { setPhase('studying'); }, []);
+  const endSession = useCallback(() => { setPhase('summary'); }, []);
+  const goHome = useCallback(() => { setPhase('idle'); }, []);
 
-  /** 结束学习 session */
-  const endSession = useCallback(() => {
-    setPhase('summary');
-  }, []);
-
-  /** 返回首页 */
-  const goHome = useCallback(() => {
-    setPhase('idle');
-  }, []);
-
-  /** 下次到期信息 */
   const nextDueInfo = useMemo(() => {
-    if (phase === 'summary' || phase === 'allDone') {
-      return getNextDueInfo();
-    }
+    if (phase === 'summary' || phase === 'allDone') return getNextDueInfo();
     return null;
   }, [phase]);
 
   return {
-    phase,
-    mode,
-    setMode,
-    currentItem,
-    quizOptions,
-    progress,
-    stats,
-    nextDueInfo,
-    startSession,
-    answerCard,
-    continueAfterPrompt,
-    endSession,
-    goHome,
+    phase, currentItem, progress, stats, nextDueInfo,
+    startSession, advanceTeaching, answerCard,
+    continueAfterPrompt, endSession, goHome,
   };
 }

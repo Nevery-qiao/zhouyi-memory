@@ -55,6 +55,29 @@ function getAllPossibleAnswers(cardType: string): string[] {
   }
 }
 
+/**
+ * Generate reverse quiz options: given card.back as prompt,
+ * pick card.front as correct + 3 wrong fronts from same card type.
+ */
+export function generateReverseQuizOptions(card: Card): QuizOption[] {
+  const correctAnswer = card.front;
+  const allFronts = getAllPossibleFronts(card.type);
+  const pool = allFronts.filter(f => f !== correctAnswer);
+  const distractors = pickRandom(pool, 3);
+
+  const options: QuizOption[] = [
+    { text: correctAnswer, isCorrect: true },
+    ...distractors.map(text => ({ text, isCorrect: false })),
+  ];
+
+  return shuffleArray(options);
+}
+
+function getAllPossibleFronts(cardType: string): string[] {
+  const allCards = getAllCards();
+  return allCards.filter(c => c.type === cardType).map(c => c.front);
+}
+
 function pickRandom<T>(arr: T[], count: number): T[] {
   const shuffled = shuffleArray([...arr]);
   return shuffled.slice(0, count);

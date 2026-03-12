@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import type { Card, CardState, StudyRecord } from '../models/types';
+import type { Card, CardState } from '../models/types';
 
 // --- Mocks ---
 vi.mock('./cardGenerator', () => ({

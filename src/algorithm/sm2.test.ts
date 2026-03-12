@@ -69,7 +69,7 @@ describe('SM-2 Algorithm', () => {
   describe('quality >= 3 (答对)', () => {
     it('first correct: interval = 1, repetitions = 1', () => {
       const state = makeState({ repetitions: 0, interval: 0 });
-      const next = updateCardState(state, 3);
+      const next = updateCardState(state, 4);
       expect(next.repetitions).toBe(1);
       expect(next.interval).toBe(1);
       expect(next.dueDate).toBe('2026-02-19');
@@ -90,19 +90,20 @@ describe('SM-2 Algorithm', () => {
       expect(next.interval).toBe(15); // round(6 * 2.5) = 15
     });
 
-    it('quality=5 (很简单) increases easeFactor', () => {
+    it('quality=4 (答对) adjusts easeFactor', () => {
       const state = makeState({ easeFactor: 2.5 });
-      const next = updateCardState(state, 5);
-      // EF: 2.5 + (0.1 - 0 * ...) = 2.5 + 0.1 = 2.6
-      expect(next.easeFactor).toBeCloseTo(2.6, 2);
+      const next = updateCardState(state, 4);
+      // EF: 2.5 + (0.1 - (5-4) * (0.08 + (5-4) * 0.02))
+      // = 2.5 + (0.1 - 1 * 0.10) = 2.5 + 0 = 2.5
+      expect(next.easeFactor).toBeCloseTo(2.5, 2);
     });
 
-    it('quality=3 (想起来了) decreases easeFactor', () => {
+    it('quality=1 (答错) decreases easeFactor', () => {
       const state = makeState({ easeFactor: 2.5 });
-      const next = updateCardState(state, 3);
-      // EF: 2.5 + (0.1 - 2 * (0.08 + 2*0.02))
-      // = 2.5 + (0.1 - 2 * 0.12) = 2.5 + (0.1 - 0.24) = 2.5 - 0.14 = 2.36
-      expect(next.easeFactor).toBeCloseTo(2.36, 2);
+      const next = updateCardState(state, 1);
+      // EF: 2.5 + (0.1 - 4 * (0.08 + 4 * 0.02))
+      // = 2.5 + (0.1 - 4 * 0.16) = 2.5 + (0.1 - 0.64) = 2.5 - 0.54 = 1.96
+      expect(next.easeFactor).toBeCloseTo(1.96, 2);
     });
   });
 
@@ -115,7 +116,7 @@ describe('SM-2 Algorithm', () => {
 
     it('interval capped at 365 days', () => {
       const state = makeState({ repetitions: 10, interval: 300, easeFactor: 2.5 });
-      const next = updateCardState(state, 5);
+      const next = updateCardState(state, 4);
       expect(next.interval).toBeLessThanOrEqual(365);
     });
 

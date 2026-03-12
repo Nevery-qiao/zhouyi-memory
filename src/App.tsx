@@ -4,43 +4,44 @@ import { isStorageAvailable } from './storage/localStorage';
 import HomePage from './pages/HomePage';
 import StudyPage from './pages/StudyPage';
 import SummaryPage from './pages/SummaryPage';
+import DictionaryPage from './pages/DictionaryPage';
 import NewCardPrompt from './components/NewCardPrompt';
 
 function App() {
   const [storageWarning, setStorageWarning] = useState(false);
+  const [showDictionary, setShowDictionary] = useState(false);
   const session = useStudySession();
 
   useEffect(() => {
-    if (!isStorageAvailable()) {
-      setStorageWarning(true);
-    }
+    if (!isStorageAvailable()) setStorageWarning(true);
   }, []);
+
+  if (showDictionary) {
+    return <DictionaryPage onBack={() => setShowDictionary(false)} />;
+  }
 
   switch (session.phase) {
     case 'idle':
       return (
         <HomePage
           progress={session.progress}
-          mode={session.mode}
-          onModeChange={session.setMode}
           onStart={session.startSession}
+          onOpenDictionary={() => setShowDictionary(true)}
           storageWarning={storageWarning}
         />
       );
 
     case 'studying':
       if (!session.currentItem) {
-        // 队列耗尽，自动进入完成页
         session.endSession();
         return null;
       }
       return (
         <StudyPage
           currentItem={session.currentItem}
-          mode={session.mode}
           progress={session.progress}
-          quizOptions={session.quizOptions}
           onAnswer={session.answerCard}
+          onAdvanceTeaching={session.advanceTeaching}
           onEnd={session.endSession}
         />
       );

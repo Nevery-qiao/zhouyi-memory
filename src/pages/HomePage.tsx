@@ -1,14 +1,13 @@
-import type { ProgressInfo, StudyMode } from '../models/types';
+import type { ProgressInfo } from '../models/types';
 
 interface HomePageProps {
   progress: ProgressInfo;
-  mode: StudyMode;
-  onModeChange: (mode: StudyMode) => void;
   onStart: () => void;
+  onOpenDictionary: () => void;
   storageWarning: boolean;
 }
 
-export default function HomePage({ progress, mode, onModeChange, onStart, storageWarning }: HomePageProps) {
+export default function HomePage({ progress, onStart, onOpenDictionary, storageWarning }: HomePageProps) {
   return (
     <div className="min-h-dvh bg-parchment flex flex-col">
       {/* 隐私浏览警告 */}
@@ -55,42 +54,26 @@ export default function HomePage({ progress, mode, onModeChange, onStart, storag
           </div>
         </div>
 
-        {/* 模式切换 */}
-        <div className="w-full flex bg-parchment-dark rounded-lg p-1 mb-6 animate-fade-in">
-          <button
-            onClick={() => onModeChange('flip')}
-            className={`flex-1 py-2 text-sm rounded-md transition-all ${
-              mode === 'flip'
-                ? 'bg-card-bg text-ink shadow-sm font-semibold'
-                : 'text-ink-muted hover:text-ink'
-            }`}
-          >
-            翻卡片
-          </button>
-          <button
-            onClick={() => onModeChange('quiz')}
-            className={`flex-1 py-2 text-sm rounded-md transition-all ${
-              mode === 'quiz'
-                ? 'bg-card-bg text-ink shadow-sm font-semibold'
-                : 'text-ink-muted hover:text-ink'
-            }`}
-          >
-            四选一
-          </button>
-        </div>
-
         {/* 开始学习按钮 */}
         <button
           onClick={onStart}
-          className="w-full py-3.5 bg-cinnabar text-white rounded-lg font-semibold tracking-wider hover:bg-cinnabar-dark active:scale-[0.98] transition-all animate-fade-in"
+          className="w-full py-3.5 bg-cinnabar text-white rounded-lg font-semibold tracking-wider hover:bg-cinnabar-dark active:scale-[0.98] transition-all animate-fade-in mb-3"
         >
           开始学习
+        </button>
+
+        {/* 卦典按钮 */}
+        <button
+          onClick={onOpenDictionary}
+          className="w-full py-3.5 bg-card-bg border border-card-border text-ink rounded-lg font-semibold tracking-wider hover:shadow-sm active:scale-[0.98] transition-all animate-fade-in"
+        >
+          卦典
         </button>
       </div>
 
       {/* 底部 */}
       <div className="text-center py-4 text-xs text-ink-muted/50">
-        周易记忆卡 v1.0
+        周易记忆卡 v2.0
       </div>
     </div>
   );

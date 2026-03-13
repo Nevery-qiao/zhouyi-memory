@@ -73,9 +73,11 @@ export interface QuizOption {
 
 /** 全局进度信息 */
 export interface ProgressInfo {
-  masteredCount: number;   // 已掌握卡片数 (repetitions ≥ 1)
+  masteredHex: number;     // 已掌握卦数 (3张卡全部 rep ≥ 4)
+  learningHex: number;     // 学习中卦数
+  totalHex: number;        // 总卦数 (64)
   totalCards: number;      // 总卡片数 (192)
-  dueCount: number;        // 今日待复习数
+  studiedCards: number;    // 已学习卡片数
   newLearnedCount: number; // 本次 session 已学新卡数
 }
 

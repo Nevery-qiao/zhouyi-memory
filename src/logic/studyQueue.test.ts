@@ -74,12 +74,10 @@ describe('buildStudyQueue', () => {
     expect(queue).toHaveLength(4); // 1 teaching + 3 quiz-forward
     expect(queue[0].exerciseType).toBe('teaching');
     expect(queue[0].isNew).toBe(true);
-    expect(queue[1].exerciseType).toBe('quiz-forward');
-    expect(queue[2].exerciseType).toBe('quiz-forward');
-    expect(queue[3].exerciseType).toBe('quiz-forward');
+    expect(queue.filter(q => q.exerciseType === 'quiz-forward')).toHaveLength(3);
   });
 
-  it('deduplicates teaching cards per hexagram', () => {
+  it('deduplicates teaching cards and interleaves across hexagrams', () => {
     const cards = [makeCard(1, 'A'), makeCard(1, 'C'), makeCard(2, 'A'), makeCard(2, 'C')];
     mockGetAllCards.mockReturnValue(cards);
     mockLoadRecord.mockReturnValue({ schemaVersion: 1, cardStates: {}, totalReviews: 0, lastStudyDate: '' });
@@ -88,8 +86,17 @@ describe('buildStudyQueue', () => {
     const queue = buildStudyQueue();
     const teachingItems = queue.filter(q => q.exerciseType === 'teaching');
     expect(teachingItems).toHaveLength(2); // one per hexagram
-    expect(teachingItems[0].card.hexagramId).toBe(1);
-    expect(teachingItems[1].card.hexagramId).toBe(2);
+
+    // Round 0: teaching hex1, teaching hex2 (interleaved)
+    expect(queue[0].exerciseType).toBe('teaching');
+    expect(queue[0].card.hexagramId).toBe(1);
+    expect(queue[1].exerciseType).toBe('teaching');
+    expect(queue[1].card.hexagramId).toBe(2);
+    // Round 1: quiz hex1-A, quiz hex2-A
+    expect(queue[2].exerciseType).toBe('quiz-forward');
+    expect(queue[2].card.hexagramId).toBe(1);
+    expect(queue[3].exerciseType).toBe('quiz-forward');
+    expect(queue[3].card.hexagramId).toBe(2);
   });
 
   it('puts due review cards in Phase 1 before new cards', () => {
@@ -255,9 +262,8 @@ describe('getProgressInfo', () => {
     mockHasBeenStudied.mockReturnValue(true);
 
     const info = getProgressInfo(5);
-    expect(info.totalCards).toBe(2);
-    expect(info.masteredCount).toBe(2); // both have reps >= 1
-    expect(info.dueCount).toBe(1); // only 1-A due today
+    expect(info.totalHex).toBe(64);
+    expect(info.studiedCards).toBeGreaterThan(0);
     expect(info.newLearnedCount).toBe(5);
   });
 
@@ -265,10 +271,11 @@ describe('getProgressInfo', () => {
     mockGetAllCards.mockReturnValue([makeCard(1, 'A')]);
     mockLoadRecord.mockReturnValue({ schemaVersion: 1, cardStates: {}, totalReviews: 0, lastStudyDate: '' });
     mockHasBeenStudied.mockReturnValue(false);
+    mockGetCardState.mockReturnValue(undefined);
 
     const info = getProgressInfo(0);
-    expect(info.masteredCount).toBe(0);
-    expect(info.dueCount).toBe(0);
+    expect(info.masteredHex).toBe(0);
+    expect(info.studiedCards).toBe(0);
   });
 });
 

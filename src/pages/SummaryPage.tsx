@@ -54,13 +54,13 @@ export default function SummaryPage({ stats, progress, nextDueInfo, isAllDone, o
               <div className="border-t border-card-border pt-4">
                 <div className="text-xs text-ink-muted mb-1">总进度</div>
                 <div className="text-lg font-bold text-ink">
-                  {progress.masteredCount} / {progress.totalCards}
-                  <span className="text-sm font-normal text-ink-muted ml-2">已掌握</span>
+                  {progress.masteredHex} / {progress.totalHex}
+                  <span className="text-sm font-normal text-ink-muted ml-2">卦已掌握</span>
                 </div>
                 <div className="mt-2 h-2 bg-parchment-dark rounded-full overflow-hidden">
                   <div
                     className="h-full bg-jade rounded-full transition-all"
-                    style={{ width: `${(progress.masteredCount / progress.totalCards) * 100}%` }}
+                    style={{ width: `${(progress.masteredHex / progress.totalHex) * 100}%` }}
                   />
                 </div>
               </div>

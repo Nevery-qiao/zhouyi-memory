@@ -4,6 +4,6 @@ import tailwindcss from '@tailwindcss/vite'
 
 // https://vite.dev/config/
 export default defineConfig({
-  base: '/zhouyi-memory/',
+  base: '/zhouyi/',
   plugins: [react(), tailwindcss()],
 })

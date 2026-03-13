@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import type { Hexagram } from '../models/types';
 import { getCardState } from '../storage/localStorage';
 
@@ -14,8 +13,6 @@ const CARD_LABELS = [
 ] as const;
 
 export default function HexagramDetailPage({ hex, onBack }: HexagramDetailPageProps) {
-  const [showTranslation, setShowTranslation] = useState(false);
-
   return (
     <div className="min-h-dvh bg-parchment">
       {/* Header */}
@@ -28,7 +25,6 @@ export default function HexagramDetailPage({ hex, onBack }: HexagramDetailPagePr
         {/* Symbol + Name */}
         <div className="text-center mb-6">
           <div className="hexagram-symbol text-7xl text-ink mb-2">{hex.symbol}</div>
-          {hex.trigram && <div className="hexagram-symbol text-3xl text-ink-muted mb-2">{hex.trigram}</div>}
           <div className="text-3xl font-bold text-ink">{hex.name}</div>
         </div>
 
@@ -36,18 +32,9 @@ export default function HexagramDetailPage({ hex, onBack }: HexagramDetailPagePr
         <div className="bg-card-bg border border-card-border rounded-xl p-6 mb-4">
           <div className="text-xs text-ink-muted mb-2">卦辞</div>
           <div className="text-lg text-ink leading-relaxed">{hex.judgment}</div>
-          {!showTranslation ? (
-            <button
-              onClick={() => setShowTranslation(true)}
-              className="text-xs text-cinnabar mt-3 hover:underline"
-            >
-              查看白话翻译
-            </button>
-          ) : (
-            <div className="text-sm text-ink-light mt-3 leading-relaxed border-t border-card-border pt-3 card-fade-enter">
-              {hex.judgmentTranslation}
-            </div>
-          )}
+          <div className="text-sm text-ink-light mt-3 leading-relaxed border-t border-card-border pt-3">
+            {hex.judgmentTranslation}
+          </div>
         </div>
 
         {/* Trigrams */}

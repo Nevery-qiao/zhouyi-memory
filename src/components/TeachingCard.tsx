@@ -18,9 +18,6 @@ export default function TeachingCard({ card, onDone }: TeachingCardProps) {
       <div className="w-full bg-card-bg border border-card-border rounded-xl p-8 text-center">
         {/* Hexagram symbol */}
         <div className="hexagram-symbol text-7xl text-ink mb-2">{hex.symbol}</div>
-        {hex.trigram && (
-          <div className="hexagram-symbol text-3xl text-ink-muted mb-4">{hex.trigram}</div>
-        )}
 
         {/* Name */}
         <div className="text-3xl font-bold text-ink mb-6">{hex.name}</div>

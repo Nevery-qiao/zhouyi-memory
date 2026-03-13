@@ -39,7 +39,8 @@ function App() {
       return (
         <StudyPage
           currentItem={session.currentItem}
-          progress={session.progress}
+          currentIndex={session.currentIndex}
+          queueLength={session.queueLength}
           onAnswer={session.answerCard}
           onAdvanceTeaching={session.advanceTeaching}
           onEnd={session.endSession}

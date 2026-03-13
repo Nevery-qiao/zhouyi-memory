@@ -28,28 +28,36 @@ export default function HomePage({ progress, onStart, onOpenDictionary, storageW
         <div className="w-full bg-card-bg border border-card-border rounded-lg p-6 mb-8 animate-fade-in">
           <div className="grid grid-cols-3 gap-4 text-center">
             <div>
-              <div className="text-2xl font-bold text-ink">{progress.masteredCount}</div>
+              <div className="text-2xl font-bold text-jade">{progress.masteredHex}</div>
               <div className="text-xs text-ink-muted mt-1">已掌握</div>
             </div>
             <div>
-              <div className="text-2xl font-bold text-cinnabar">{progress.dueCount}</div>
-              <div className="text-xs text-ink-muted mt-1">待复习</div>
+              <div className="text-2xl font-bold text-cinnabar">{progress.learningHex}</div>
+              <div className="text-xs text-ink-muted mt-1">学习中</div>
             </div>
             <div>
-              <div className="text-2xl font-bold text-ink-light">{progress.totalCards}</div>
-              <div className="text-xs text-ink-muted mt-1">总卡片</div>
+              <div className="text-2xl font-bold text-ink">{progress.studiedCards}<span className="text-sm font-normal text-ink-muted">/{progress.totalCards}</span></div>
+              <div className="text-xs text-ink-muted mt-1">已学卡片</div>
             </div>
           </div>
           {/* 进度条 */}
-          <div className="mt-4 h-2 bg-parchment-dark rounded-full overflow-hidden">
-            <div
-              className="h-full bg-jade rounded-full transition-all duration-500"
-              style={{ width: `${(progress.masteredCount / progress.totalCards) * 100}%` }}
-            />
+          <div className="mt-4 h-2 bg-parchment-dark rounded-full overflow-hidden flex">
+            {progress.masteredHex > 0 && (
+              <div
+                className="h-full bg-jade transition-all duration-500"
+                style={{ width: `${(progress.masteredHex / progress.totalHex) * 100}%` }}
+              />
+            )}
+            {progress.learningHex > 0 && (
+              <div
+                className="h-full bg-cinnabar/30 transition-all duration-500"
+                style={{ width: `${(progress.learningHex / progress.totalHex) * 100}%` }}
+              />
+            )}
           </div>
           <div className="text-xs text-ink-muted text-center mt-2">
-            {progress.totalCards > 0
-              ? `${Math.round((progress.masteredCount / progress.totalCards) * 100)}% 完成`
+            {progress.masteredHex > 0 || progress.learningHex > 0
+              ? `已接触 ${progress.masteredHex + progress.learningHex} / ${progress.totalHex} 卦`
               : '尚未开始'}
           </div>
         </div>

@@ -1,4 +1,4 @@
-import type { QueueItem, Quality, ProgressInfo } from '../models/types';
+import type { QueueItem, Quality } from '../models/types';
 import ProgressBar from '../components/ProgressBar';
 import TeachingCard from '../components/TeachingCard';
 import QuizCard from '../components/QuizCard';
@@ -6,14 +6,15 @@ import TrueFalseCard from '../components/TrueFalseCard';
 
 interface StudyPageProps {
   currentItem: QueueItem;
-  progress: ProgressInfo;
+  currentIndex: number;
+  queueLength: number;
   onAnswer: (quality: Quality) => void;
   onAdvanceTeaching: () => void;
   onEnd: () => void;
 }
 
 export default function StudyPage({
-  currentItem, progress, onAnswer, onAdvanceTeaching, onEnd,
+  currentItem, currentIndex, queueLength, onAnswer, onAdvanceTeaching, onEnd,
 }: StudyPageProps) {
   const renderCard = () => {
     switch (currentItem.exerciseType) {
@@ -38,14 +39,14 @@ export default function StudyPage({
 
   return (
     <div className="min-h-dvh bg-parchment flex flex-col">
-      <ProgressBar progress={progress} />
+      <ProgressBar currentIndex={currentIndex} queueLength={queueLength} />
       <div className="flex items-center justify-between px-4 py-3">
         <div className="text-xs text-ink-muted">
           <span className={badgeColor}>{badgeLabel}</span>
         </div>
         <button onClick={onEnd}
-          className="text-xs text-ink-muted hover:text-ink transition-colors px-2 py-1">
-          结束学习
+          className="text-sm text-cinnabar border border-cinnabar/30 bg-cinnabar/5 rounded-md px-3 py-1 hover:bg-cinnabar/10 active:scale-95 transition-all">
+          ✕ 结束
         </button>
       </div>
       <div className="flex-1 flex items-start justify-center px-4 pt-4 pb-8">

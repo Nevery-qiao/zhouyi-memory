@@ -41,32 +41,47 @@ export function buildStudyQueue(): QueueItem[] {
   }
   const shuffledDue = shuffle(dueItems);
 
-  // --- Phase 2: New cards with teaching flow ---
-  const newItems: QueueItem[] = [];
-  const taughtHexagrams = new Set<number>();
+  // --- Phase 2: New cards with interleaved teaching flow ---
+  // Group new cards by hexagram, each group: [teaching, quizA, quizC, quizG]
+  const hexGroups: QueueItem[][] = [];
 
   for (const card of allCards) {
     const state = record.cardStates[card.id];
     if (!state || !hasBeenStudied(state)) {
-      // Insert teaching card for this hexagram (once per hexagram)
-      if (!taughtHexagrams.has(card.hexagramId)) {
-        taughtHexagrams.add(card.hexagramId);
-        newItems.push({
+      let group = hexGroups.find(g => g[0].card.hexagramId === card.hexagramId);
+      if (!group) {
+        // First unseen card of this hexagram → start with teaching card
+        group = [{
           card,
           exerciseType: 'teaching',
           isNew: true,
           isRequeue: false,
           isConsolidation: false,
-        });
+        }];
+        hexGroups.push(group);
       }
-      // Immediate test (forward quiz)
-      newItems.push({
+      group.push({
         card,
         exerciseType: 'quiz-forward',
         isNew: true,
         isRequeue: false,
         isConsolidation: false,
       });
+    }
+  }
+
+  // Interleave in small batches (3 hexagrams per batch)
+  const BATCH_SIZE = 3;
+  const newItems: QueueItem[] = [];
+  for (let i = 0; i < hexGroups.length; i += BATCH_SIZE) {
+    const batch = hexGroups.slice(i, i + BATCH_SIZE);
+    const maxLen = Math.max(0, ...batch.map(g => g.length));
+    for (let round = 0; round < maxLen; round++) {
+      for (const group of batch) {
+        if (round < group.length) {
+          newItems.push(group[round]);
+        }
+      }
     }
   }
 
@@ -129,25 +144,29 @@ export function getHexagramMastery(hexId: number): MasteryLevel {
 }
 
 /**
- * Calculate global progress info.
+ * Calculate global progress info at hexagram level.
  */
 export function getProgressInfo(newLearnedCount: number) {
   const allCards = getAllCards();
   const record = loadStudyRecord();
-  const today = getToday();
 
-  let masteredCount = 0;
-  let dueCount = 0;
-
+  let studiedCards = 0;
   for (const card of allCards) {
     const state = record.cardStates[card.id];
     if (state && hasBeenStudied(state)) {
-      if (state.repetitions >= 1) masteredCount++;
-      if (state.dueDate <= today) dueCount++;
+      studiedCards++;
     }
   }
 
-  return { masteredCount, totalCards: allCards.length, dueCount, newLearnedCount };
+  let masteredHex = 0;
+  let learningHex = 0;
+  for (let hexId = 1; hexId <= 64; hexId++) {
+    const mastery = getHexagramMastery(hexId);
+    if (mastery === 'mastered') masteredHex++;
+    else if (mastery === 'learning') learningHex++;
+  }
+
+  return { masteredHex, learningHex, totalHex: 64, totalCards: allCards.length, studiedCards, newLearnedCount };
 }
 
 /**

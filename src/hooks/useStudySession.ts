@@ -120,7 +120,8 @@ export function useStudySession() {
   }, [phase]);
 
   return {
-    phase, currentItem, progress, stats, nextDueInfo,
+    phase, currentItem, currentIndex, queueLength: queue.length,
+    progress, stats, nextDueInfo,
     startSession, advanceTeaching, answerCard,
     continueAfterPrompt, endSession, goHome,
   };

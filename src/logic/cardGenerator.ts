@@ -22,13 +22,11 @@ export function generateAllCards(): Card[] {
 
 /** 类型 A：卦象 → 卦名 */
 function createCardA(hex: Hexagram): Card {
-  // 八经卦（trigram 非空）用三爻卦象，复合卦用六爻卦象
-  const front = hex.trigram || hex.symbol;
   return {
     id: `${hex.id}-A`,
     type: 'A',
     hexagramId: hex.id,
-    front,
+    front: hex.symbol,
     back: hex.name,
   };
 }

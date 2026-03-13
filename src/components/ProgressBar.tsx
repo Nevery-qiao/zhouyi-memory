@@ -1,17 +1,22 @@
-import type { ProgressInfo } from '../models/types';
-
 interface ProgressBarProps {
-  progress: ProgressInfo;
+  currentIndex: number;
+  queueLength: number;
 }
 
-export default function ProgressBar({ progress }: ProgressBarProps) {
+export default function ProgressBar({ currentIndex, queueLength }: ProgressBarProps) {
+  const pct = queueLength > 0 ? Math.round((currentIndex / queueLength) * 100) : 0;
+
   return (
-    <div className="text-xs text-ink-muted text-center py-2 border-b border-card-border bg-parchment-light">
-      <span>已掌握 <b className="text-ink">{progress.masteredCount}</b>/{progress.totalCards}</span>
-      <span className="mx-2">·</span>
-      <span>待复习 <b className="text-cinnabar">{progress.dueCount}</b></span>
-      <span className="mx-2">·</span>
-      <span>新卡 <b className="text-ink">{progress.newLearnedCount}</b></span>
+    <div className="px-4 pt-3 pb-2 bg-parchment-light border-b border-card-border">
+      <div className="h-1.5 bg-parchment-dark rounded-full overflow-hidden">
+        <div
+          className="h-full bg-jade rounded-full transition-all duration-300"
+          style={{ width: `${pct}%` }}
+        />
+      </div>
+      <div className="text-xs text-ink-muted text-center mt-1.5">
+        {currentIndex} / {queueLength}
+      </div>
     </div>
   );
 }
